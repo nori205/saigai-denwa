@@ -267,6 +267,13 @@
       <button class="btn btn-sub" id="print-sheet-btn">一覧を印刷する(クリアファイル用)</button>
       <button class="btn btn-sub" id="print-wallet-btn">財布サイズのカードを印刷する</button>
     </div>
+    <div class="card">
+      <h2>データのバックアップ</h2>
+      <p class="note">機種変更やアプリ削除に備えて、登録内容をQRコードで保存・復元できます。</p>
+      <button class="btn btn-sub" id="backup-show-btn">バックアップQRを表示する</button>
+      <button class="btn btn-sub" id="restore-btn">QRコードから復元する</button>
+      <input type="file" accept="image/*" id="restore-file-input" style="display:none;">
+    </div>
   </section>
 
 </main>
@@ -291,8 +298,21 @@
   </div>
 </div>
 
+<div class="modal-overlay no-print" id="backup-modal" hidden>
+  <div class="modal">
+    <p class="modal-name">バックアップQRコード</p>
+    <div style="text-align:center;">
+      <img id="backup-qr-img" style="width:100%;max-width:320px;" alt="バックアップQRコード">
+    </div>
+    <p class="note">この画像を長押しして「写真に保存」しておいてください。復元するときに、この画像を選ぶだけで元に戻せます。</p>
+    <button class="btn btn-danger" id="backup-modal-close">閉じる</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
+<script src="qrcode.min.js"></script>
+<script src="jsQR.min.js"></script>
 <script>
 const $ = sel => document.querySelector(sel);
 const $$ = sel => document.querySelectorAll(sel);
@@ -502,6 +522,60 @@ $('#print-wallet-btn').addEventListener('click', () => {
   window.print();
 });
 window.addEventListener('afterprint', () => document.body.classList.remove('print-wallet'));
+
+// --- バックアップ/復元(QRコード) ---
+const BACKUP_PREFIX = 'MOSHIMOTAP-BACKUP-V1:';
+
+$('#backup-show-btn').addEventListener('click', () => {
+  const payload = BACKUP_PREFIX + JSON.stringify({ mine: loadMine(), contacts: loadContacts() });
+  qrcode.stringToBytes = qrcode.stringToBytesFuncs['UTF-8'];
+  const qr = qrcode(0, 'M');
+  qr.addData(payload);
+  qr.make();
+  $('#backup-qr-img').src = qr.createDataURL(6, 8);
+  $('#backup-modal').hidden = false;
+});
+$('#backup-modal-close').addEventListener('click', () => $('#backup-modal').hidden = true);
+
+$('#restore-btn').addEventListener('click', () => $('#restore-file-input').click());
+$('#restore-file-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if(!file) return;
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    URL.revokeObjectURL(url);
+    const result = jsQR(imageData.data, canvas.width, canvas.height);
+    if(!result || !result.data.startsWith(BACKUP_PREFIX)){
+      showToast('QRコードを読み取れませんでした');
+      return;
+    }
+    let payload;
+    try {
+      payload = JSON.parse(result.data.slice(BACKUP_PREFIX.length));
+    } catch(err){
+      showToast('バックアップデータの形式が正しくありません');
+      return;
+    }
+    if(!confirm('現在登録されている内容を、読み込んだバックアップで上書きします。よろしいですか？')) return;
+    saveMine(payload.mine || null);
+    saveContacts(Array.isArray(payload.contacts) ? payload.contacts : []);
+    renderContactList();
+    renderMine();
+    renderManageList();
+    renderPrintList();
+    showToast('復元しました');
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); showToast('画像を読み込めませんでした'); };
+  img.src = url;
+});
 
 // --- 初期化 ---
 renderContactList();

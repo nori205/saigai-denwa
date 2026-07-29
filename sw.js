@@ -1,10 +1,12 @@
-const CACHE_NAME = 'moshimo-tap-v1';
+const CACHE_NAME = 'moshimo-tap-v2';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './qrcode.min.js',
+  './jsQR.min.js'
 ];
 
 self.addEventListener('install', event => {
