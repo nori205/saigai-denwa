@@ -228,7 +228,7 @@
       <div class="card">
         <h2>171に伝言を残す</h2>
         <p class="note">171へ発信し、自動で「録音」を選択→あなたの番号を入力するところまで進めます。ピーという音の後、ご自身の状況を話してください。</p>
-        <button class="btn btn-main" id="mine-auto-record">自動で171につなぐ(伝言を残す)</button>
+        <a class="btn btn-main" id="mine-auto-record" href="tel:171" style="text-align:center;display:block;text-decoration:none;">自動で171につなぐ(伝言を残す)</a>
         <button class="btn btn-sub" id="mine-copy">自分の番号をコピーする</button>
         <a class="btn btn-sub" href="tel:171" style="text-align:center;display:block;text-decoration:none;">171に直接かける(手動)</a>
       </div>
@@ -283,9 +283,9 @@
   <div class="modal">
     <p class="modal-name" id="modal-name"></p>
     <p class="modal-number" id="modal-number"></p>
-    <button class="btn btn-main" id="modal-auto">自動で171につなぐ(伝言を聞く)</button>
+    <a class="btn btn-main" id="modal-auto" href="tel:171" style="text-align:center;display:block;text-decoration:none;">自動で171につなぐ(伝言を聞く)</a>
     <button class="btn btn-sub" id="modal-copy">番号をコピーする</button>
-    <button class="btn btn-sub" id="modal-manual">171に直接かける(手動)</button>
+    <a class="btn btn-sub" id="modal-manual" href="tel:171" style="text-align:center;display:block;text-decoration:none;">171に直接かける(手動)</a>
     <p class="note">自動発信がうまくいかない場合は、番号をコピーして171の案内に従って自分で入力してください。</p>
     <button class="btn btn-danger" id="modal-close">閉じる</button>
   </div>
@@ -370,20 +370,14 @@ function openModal(c){
   currentModalContact = c;
   $('#modal-name').textContent = c.name;
   $('#modal-number').textContent = c.phone;
+  $('#modal-auto').href = buildTelUri('2', c.phone);
   $('#modal').hidden = false;
 }
 $('#modal-close').addEventListener('click', () => $('#modal').hidden = true);
 $('#modal').addEventListener('click', e => { if(e.target.id === 'modal') $('#modal').hidden = true; });
-$('#modal-auto').addEventListener('click', () => {
-  if(!currentModalContact) return;
-  location.href = buildTelUri('2', currentModalContact.phone);
-});
 $('#modal-copy').addEventListener('click', () => {
   if(!currentModalContact) return;
   copyText(currentModalContact.phone);
-});
-$('#modal-manual').addEventListener('click', () => {
-  location.href = 'tel:171';
 });
 
 // --- 自分の無事タブ ---
@@ -394,6 +388,7 @@ function renderMine(){
     $('#mine-form-wrap').hidden = true;
     $('#mine-name-view').textContent = mine.name;
     $('#mine-phone-view').textContent = mine.phone;
+    $('#mine-auto-record').href = buildTelUri('1', mine.phone);
   } else {
     $('#mine-registered').hidden = true;
     $('#mine-form-wrap').hidden = false;
@@ -415,11 +410,6 @@ $('#mine-edit-btn').addEventListener('click', () => {
   }
   $('#mine-registered').hidden = true;
   $('#mine-form-wrap').hidden = false;
-});
-$('#mine-auto-record').addEventListener('click', () => {
-  const mine = loadMine();
-  if(!mine) return;
-  location.href = buildTelUri('1', mine.phone);
 });
 $('#mine-copy').addEventListener('click', () => {
   const mine = loadMine();
