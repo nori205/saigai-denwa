@@ -1,0 +1,23 @@
+{
+  "name": "もしもタップ - 災害用伝言ダイヤルを簡単に",
+  "short_name": "もしもタップ",
+  "description": "171(災害用伝言ダイヤル)で相手の電話番号を探す手間をなくし、名前をタップするだけで安否確認できるアプリ",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#E8F5BD",
+  "theme_color": "#4d7a44",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

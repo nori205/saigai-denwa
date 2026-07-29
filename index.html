@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>もしもタップ - 災害用伝言ダイヤルを簡単に</title>
+<meta name="description" content="171(災害用伝言ダイヤル)で相手の電話番号を探す手間をなくし、名前をタップするだけで安否確認できるアプリ">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4d7a44">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    /* Color Hunt パレット(84B179/A2CB8B/C7EABB/E8F5BD)。
+       ボタン・見出し文字は白文字とのコントラスト確保のためパレットから濃い方向へ1色派生させている。 */
+    --green-deep:#4d7a44;
+    --green-deep-dark:#3a5e33;
+    --green-dark:#84B179;
+    --green-mid:#A2CB8B;
+    --green-light:#C7EABB;
+    --green-pale:#E8F5BD;
+    --card:#ffffff;
+    --text:#222;
+    --danger:#c0392b;
+    --border:#bcd9ac;
+  }
+  *{box-sizing:border-box;}
+  html{font-size:18px;}
+  body{
+    margin:0;
+    font-family:"Hiragino Sans","Meiryo","Yu Gothic",sans-serif;
+    background:var(--green-pale);
+    color:var(--text);
+    padding-bottom:40px;
+    line-height:1.7;
+  }
+  header{
+    background:var(--green-deep);
+    color:#fff;
+    padding:18px 16px;
+    text-align:center;
+  }
+  header h1{margin:0;font-size:1.6rem;}
+  header p{margin:6px 0 0;font-size:0.95rem;opacity:0.95;}
+  nav.tabs{
+    display:flex;
+    background:var(--green-deep-dark);
+    position:sticky;
+    top:0;
+    z-index:10;
+  }
+  nav.tabs button{
+    flex:1;
+    padding:14px 4px;
+    border:none;
+    background:transparent;
+    color:#fff;
+    opacity:0.8;
+    font-size:1rem;
+    cursor:pointer;
+  }
+  nav.tabs button.active{
+    opacity:1;
+    border-bottom:4px solid #fff;
+    font-weight:bold;
+  }
+  main{padding:16px;max-width:480px;margin:0 auto;}
+  section[hidden]{display:none;}
+  .contact-btn{
+    display:flex;
+    align-items:center;
+    width:100%;
+    text-align:left;
+    background:var(--card);
+    border:2px solid var(--border);
+    border-radius:12px;
+    padding:18px;
+    margin-bottom:12px;
+    font-size:1.25rem;
+    cursor:pointer;
+  }
+  .contact-btn .name{font-weight:bold;flex:1;}
+  .contact-btn .relation{font-size:0.85rem;color:#555;font-weight:normal;}
+  .empty-hint{
+    text-align:center;
+    color:#3d4f37;
+    padding:30px 10px;
+    line-height:1.8;
+    font-size:1.05rem;
+  }
+  .card{
+    background:var(--card);
+    border:2px solid var(--border);
+    border-radius:12px;
+    padding:18px;
+    margin-bottom:14px;
+  }
+  .card h2{margin:0 0 12px;font-size:1.15rem;color:var(--green-deep-dark);}
+  label{display:block;font-size:0.95rem;margin:12px 0 5px;color:#3d4f37;font-weight:bold;}
+  input[type=text], input[type=tel]{
+    width:100%;
+    padding:12px;
+    border:2px solid var(--border);
+    border-radius:8px;
+    font-size:1.1rem;
+  }
+  .btn{
+    display:block;
+    width:100%;
+    padding:16px;
+    border:none;
+    border-radius:10px;
+    font-size:1.1rem;
+    font-weight:bold;
+    margin-top:12px;
+    cursor:pointer;
+  }
+  .btn-main{background:var(--green-deep);color:#fff;}
+  .btn-sub{background:var(--green-light);color:#2c3e28;}
+  .btn-danger{background:#fff;color:var(--danger);border:2px solid var(--danger);}
+  .row{display:flex;gap:8px;}
+  .row .btn{margin-top:0;}
+  .manage-item{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--card);
+    border:2px solid var(--border);
+    border-radius:10px;
+    padding:14px;
+    margin-bottom:10px;
+  }
+  .manage-item .info{flex:1;}
+  .manage-item .info .n{font-weight:bold;font-size:1.1rem;}
+  .manage-item .info .p{font-size:0.95rem;color:#555;}
+  .manage-item .actions button{
+    background:none;border:none;font-size:1.4rem;padding:8px;cursor:pointer;
+  }
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,0.5);
+    display:flex;align-items:flex-end;justify-content:center;z-index:100;
+  }
+  .modal-overlay[hidden]{display:none;}
+  .modal{
+    background:#fff;
+    width:100%;max-width:480px;
+    border-radius:16px 16px 0 0;
+    padding:22px;
+  }
+  .modal .modal-name{font-size:1.35rem;font-weight:bold;margin:0 0 6px;}
+  .modal .modal-number{
+    font-size:2rem;
+    letter-spacing:1px;
+    font-weight:bold;
+    color:var(--green-deep-dark);
+    margin:6px 0 16px;
+    word-break:break-all;
+  }
+  .toast{
+    position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
+    background:#222;color:#fff;padding:12px 20px;border-radius:20px;
+    font-size:1rem;z-index:200;opacity:0;transition:opacity 0.2s;
+    pointer-events:none;
+  }
+  .toast.show{opacity:1;}
+  .note{font-size:0.88rem;color:#555;line-height:1.7;margin-top:10px;}
+  .print-list{display:none;}
+  .wallet-list{display:none;}
+  @media print{
+    header, nav.tabs, .no-print{display:none !important;}
+    body{padding:0;background:#fff;}
+    main{display:none;}
+    body.print-wallet .print-list{display:none;}
+    body.print-wallet .wallet-list{
+      display:grid;
+      grid-template-columns:repeat(2, 1fr);
+      gap:6mm;
+    }
+    body:not(.print-wallet) .print-list{display:block;}
+    .print-list h2{border-bottom:2px solid #333;padding-bottom:6px;}
+    .print-list .p-item{
+      display:flex;justify-content:space-between;
+      font-size:1.4rem;padding:10px 0;border-bottom:1px dashed #999;
+    }
+    .wallet-card{
+      width:85mm;height:53mm;
+      border:1px solid #333;border-radius:3mm;
+      padding:4mm;
+      page-break-inside:avoid;
+      font-size:10pt;
+    }
+    .wallet-card h3{margin:0 0 2mm;font-size:11pt;border-bottom:1px solid #999;padding-bottom:1mm;}
+    .wallet-card .w-item{display:flex;justify-content:space-between;font-size:9.5pt;padding:0.8mm 0;}
+    .wallet-card .w-footer{font-size:7.5pt;color:#555;margin-top:2mm;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>もしもタップ</h1>
+  <p>災害用伝言ダイヤル(171)を、名前をタップするだけで</p>
+</header>
+
+<nav class="tabs no-print">
+  <button data-tab="check" class="active">安否を確認</button>
+  <button data-tab="mine">自分の無事を伝える</button>
+  <button data-tab="manage">連絡先の管理</button>
+</nav>
+
+<main>
+
+  <section id="tab-check">
+    <div id="contact-list"></div>
+    <p class="empty-hint" id="check-empty" hidden>
+      まだ誰も登録されていません。<br>「連絡先の管理」タブから、安否を確認したい家族・友人を登録してください。
+    </p>
+  </section>
+
+  <section id="tab-mine" hidden>
+    <div id="mine-registered" hidden>
+      <div class="card">
+        <h2>あなたの情報</h2>
+        <p class="manage-item .info .n" style="font-weight:bold;font-size:1.1rem;margin:0;" id="mine-name-view"></p>
+        <p style="color:#666;margin:4px 0 0;" id="mine-phone-view"></p>
+        <button class="btn btn-sub" id="mine-edit-btn">編集する</button>
+      </div>
+      <div class="card">
+        <h2>171に伝言を残す</h2>
+        <p class="note">171へ発信し、自動で「録音」を選択→あなたの番号を入力するところまで進めます。ピーという音の後、ご自身の状況を話してください。</p>
+        <button class="btn btn-main" id="mine-auto-record">自動で171につなぐ(伝言を残す)</button>
+        <button class="btn btn-sub" id="mine-copy">自分の番号をコピーする</button>
+        <a class="btn btn-sub" href="tel:171" style="text-align:center;display:block;text-decoration:none;">171に直接かける(手動)</a>
+      </div>
+    </div>
+    <div id="mine-form-wrap">
+      <div class="card">
+        <h2>あなたの電話番号を登録</h2>
+        <label for="mine-name">お名前</label>
+        <input type="text" id="mine-name" placeholder="例：山田太郎">
+        <label for="mine-phone">電話番号</label>
+        <input type="tel" id="mine-phone" placeholder="例：09012345678">
+        <button class="btn btn-main" id="mine-save">保存する</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-manage" hidden>
+    <div class="card">
+      <h2>連絡先を追加</h2>
+      <label for="c-name">名前</label>
+      <input type="text" id="c-name" placeholder="例：お母さん">
+      <label for="c-relation">関係(任意)</label>
+      <input type="text" id="c-relation" placeholder="例：家族・友人など">
+      <label for="c-phone">電話番号</label>
+      <input type="tel" id="c-phone" placeholder="例：09012345678">
+      <button class="btn btn-main" id="c-add">追加する</button>
+    </div>
+    <div class="card">
+      <h2>登録済みの連絡先</h2>
+      <div id="manage-list"></div>
+      <p class="empty-hint" id="manage-empty" hidden>まだ登録がありません</p>
+    </div>
+    <div class="card">
+      <h2>紙にも控えを残す</h2>
+      <p class="note">スマホの電池切れ・故障・紛失に備えて、紙の控えも作れます。</p>
+      <button class="btn btn-sub" id="print-sheet-btn">一覧を印刷する(クリアファイル用)</button>
+      <button class="btn btn-sub" id="print-wallet-btn">財布サイズのカードを印刷する</button>
+    </div>
+  </section>
+
+</main>
+
+<div class="print-list" id="print-list">
+  <h2>もしもの電話番号控え</h2>
+  <div id="print-mine"></div>
+  <div id="print-contacts"></div>
+</div>
+
+<div class="wallet-list" id="wallet-list"></div>
+
+<div class="modal-overlay no-print" id="modal" hidden>
+  <div class="modal">
+    <p class="modal-name" id="modal-name"></p>
+    <p class="modal-number" id="modal-number"></p>
+    <button class="btn btn-main" id="modal-auto">自動で171につなぐ(伝言を聞く)</button>
+    <button class="btn btn-sub" id="modal-copy">番号をコピーする</button>
+    <button class="btn btn-sub" id="modal-manual">171に直接かける(手動)</button>
+    <p class="note">自動発信がうまくいかない場合は、番号をコピーして171の案内に従って自分で入力してください。</p>
+    <button class="btn btn-danger" id="modal-close">閉じる</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = sel => document.querySelector(sel);
+const $$ = sel => document.querySelectorAll(sel);
+
+function loadContacts(){ return JSON.parse(localStorage.getItem('mt_contacts') || '[]'); }
+function saveContacts(list){ localStorage.setItem('mt_contacts', JSON.stringify(list)); }
+function loadMine(){ return JSON.parse(localStorage.getItem('mt_mine') || 'null'); }
+function saveMine(data){ localStorage.setItem('mt_mine', JSON.stringify(data)); }
+
+function sanitizePhone(v){ return (v||'').replace(/[^0-9]/g, ''); }
+
+// カンマは171の音声案内が終わるまでの一時停止(端末により約1〜2秒/個)。
+// 案内のタイミングは機種や回線混雑で前後するため、自動発信はダメ元の補助機能とする。
+function buildTelUri(step, number){
+  const num = sanitizePhone(number);
+  return `tel:171,,${step},,${num}%23,,1`;
+}
+
+function showToast(msg){
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+function copyText(text){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(() => showToast('コピーしました')).catch(() => fallbackCopy(text));
+  } else {
+    fallbackCopy(text);
+  }
+}
+function fallbackCopy(text){
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); showToast('コピーしました'); } catch(e) { showToast('コピーできませんでした'); }
+  document.body.removeChild(ta);
+}
+
+// --- タブ切り替え ---
+$$('nav.tabs button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $$('nav.tabs button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    $$('main section').forEach(s => s.hidden = true);
+    $('#tab-' + btn.dataset.tab).hidden = false;
+  });
+});
+
+// --- 安否確認タブ ---
+function renderContactList(){
+  const list = loadContacts();
+  const wrap = $('#contact-list');
+  wrap.innerHTML = '';
+  $('#check-empty').hidden = list.length > 0;
+  list.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'contact-btn';
+    btn.innerHTML = `<span class="name">${escapeHtml(c.name)}${c.relation ? `<span class="relation"> (${escapeHtml(c.relation)})</span>` : ''}</span>`;
+    btn.addEventListener('click', () => openModal(c));
+    wrap.appendChild(btn);
+  });
+}
+
+function escapeHtml(s){
+  return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+let currentModalContact = null;
+function openModal(c){
+  currentModalContact = c;
+  $('#modal-name').textContent = c.name;
+  $('#modal-number').textContent = c.phone;
+  $('#modal').hidden = false;
+}
+$('#modal-close').addEventListener('click', () => $('#modal').hidden = true);
+$('#modal').addEventListener('click', e => { if(e.target.id === 'modal') $('#modal').hidden = true; });
+$('#modal-auto').addEventListener('click', () => {
+  if(!currentModalContact) return;
+  location.href = buildTelUri('2', currentModalContact.phone);
+});
+$('#modal-copy').addEventListener('click', () => {
+  if(!currentModalContact) return;
+  copyText(currentModalContact.phone);
+});
+$('#modal-manual').addEventListener('click', () => {
+  location.href = 'tel:171';
+});
+
+// --- 自分の無事タブ ---
+function renderMine(){
+  const mine = loadMine();
+  if(mine){
+    $('#mine-registered').hidden = false;
+    $('#mine-form-wrap').hidden = true;
+    $('#mine-name-view').textContent = mine.name;
+    $('#mine-phone-view').textContent = mine.phone;
+  } else {
+    $('#mine-registered').hidden = true;
+    $('#mine-form-wrap').hidden = false;
+  }
+}
+$('#mine-save').addEventListener('click', () => {
+  const name = $('#mine-name').value.trim();
+  const phone = sanitizePhone($('#mine-phone').value);
+  if(!name || !phone){ showToast('お名前と電話番号を入力してください'); return; }
+  saveMine({ name, phone });
+  renderMine();
+  renderPrintList();
+});
+$('#mine-edit-btn').addEventListener('click', () => {
+  const mine = loadMine();
+  if(mine){
+    $('#mine-name').value = mine.name;
+    $('#mine-phone').value = mine.phone;
+  }
+  $('#mine-registered').hidden = true;
+  $('#mine-form-wrap').hidden = false;
+});
+$('#mine-auto-record').addEventListener('click', () => {
+  const mine = loadMine();
+  if(!mine) return;
+  location.href = buildTelUri('1', mine.phone);
+});
+$('#mine-copy').addEventListener('click', () => {
+  const mine = loadMine();
+  if(!mine) return;
+  copyText(mine.phone);
+});
+
+// --- 連絡先管理タブ ---
+$('#c-add').addEventListener('click', () => {
+  const name = $('#c-name').value.trim();
+  const relation = $('#c-relation').value.trim();
+  const phone = sanitizePhone($('#c-phone').value);
+  if(!name || !phone){ showToast('名前と電話番号を入力してください'); return; }
+  const list = loadContacts();
+  list.push({ id: Date.now(), name, relation, phone });
+  saveContacts(list);
+  $('#c-name').value = '';
+  $('#c-relation').value = '';
+  $('#c-phone').value = '';
+  renderContactList();
+  renderManageList();
+  renderPrintList();
+});
+
+function renderManageList(){
+  const list = loadContacts();
+  const wrap = $('#manage-list');
+  wrap.innerHTML = '';
+  $('#manage-empty').hidden = list.length > 0;
+  list.forEach(c => {
+    const row = document.createElement('div');
+    row.className = 'manage-item';
+    row.innerHTML = `
+      <div class="info">
+        <div class="n">${escapeHtml(c.name)}${c.relation ? ` (${escapeHtml(c.relation)})` : ''}</div>
+        <div class="p">${escapeHtml(c.phone)}</div>
+      </div>
+      <div class="actions">
+        <button data-act="del" title="削除">🗑</button>
+      </div>`;
+    row.querySelector('[data-act=del]').addEventListener('click', () => {
+      if(confirm(`${c.name}を削除しますか？`)){
+        saveContacts(loadContacts().filter(x => x.id !== c.id));
+        renderContactList();
+        renderManageList();
+        renderPrintList();
+      }
+    });
+    wrap.appendChild(row);
+  });
+}
+
+// --- 印刷用リスト(クリアファイル用の一覧) ---
+function renderPrintList(){
+  const mine = loadMine();
+  const list = loadContacts();
+  $('#print-mine').innerHTML = mine
+    ? `<div class="p-item"><span>自分(${escapeHtml(mine.name)})</span><span>${escapeHtml(mine.phone)}</span></div>`
+    : '';
+  $('#print-contacts').innerHTML = list.map(c =>
+    `<div class="p-item"><span>${escapeHtml(c.name)}${c.relation ? `(${escapeHtml(c.relation)})` : ''}</span><span>${escapeHtml(c.phone)}</span></div>`
+  ).join('');
+}
+$('#print-sheet-btn').addEventListener('click', () => {
+  renderPrintList();
+  document.body.classList.remove('print-wallet');
+  window.print();
+});
+
+// --- 財布サイズのミニカード(切り取って複数人に配れるよう同じ内容を複製) ---
+const WALLET_COPIES = 4;
+function renderWalletList(){
+  const mine = loadMine();
+  const list = loadContacts();
+  const rows = [
+    ...(mine ? [`<div class="w-item"><span>自分(${escapeHtml(mine.name)})</span><span>${escapeHtml(mine.phone)}</span></div>`] : []),
+    ...list.map(c => `<div class="w-item"><span>${escapeHtml(c.name)}${c.relation ? `(${escapeHtml(c.relation)})` : ''}</span><span>${escapeHtml(c.phone)}</span></div>`)
+  ].join('');
+  const card = `
+    <div class="wallet-card">
+      <h3>もしもの電話番号</h3>
+      ${rows || '<div class="w-item">未登録</div>'}
+      <div class="w-footer">災害用伝言ダイヤル171へ発信→この番号を入力</div>
+    </div>`;
+  $('#wallet-list').innerHTML = card.repeat(WALLET_COPIES);
+}
+$('#print-wallet-btn').addEventListener('click', () => {
+  renderWalletList();
+  document.body.classList.add('print-wallet');
+  window.print();
+});
+window.addEventListener('afterprint', () => document.body.classList.remove('print-wallet'));
+
+// --- 初期化 ---
+renderContactList();
+renderMine();
+renderManageList();
+renderPrintList();
+
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
