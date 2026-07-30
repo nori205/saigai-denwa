@@ -211,6 +211,13 @@
 <main>
 
   <section id="tab-check">
+    <div class="card" id="intro-card">
+      <h2>171(災害用伝言ダイヤル)って何？</h2>
+      <p class="note">地震などで電話がつながりにくい時に、声で安否を伝え合えるNTTの無料サービスです。普段は使えず、体験できるのは<b>毎月1日・15日</b>、1/1〜1/3、防災週間(8/30〜9/5)、防災とボランティア週間(1/15〜21)、そして実際の災害時だけです。</p>
+      <p class="note"><b>次の体験利用日：<span id="next-test-day"></span></b><br>この日に、家族や友人と一緒に実際に試してみましょう。</p>
+      <p class="note"><b>使い方</b><br>171に電話→アナウンスに従って「1」で伝言を<b>録音</b>、「2」で伝言を<b>再生</b>できます。続けて、確認したい相手の電話番号(自分の無事を伝える時は自分の番号)を入力し、最後に「#」を押します。</p>
+      <p class="note">このアプリは自動で操作を代行するものではなく、171という仕組みを思い出し、必要な番号をすぐ確認できるようにしておくための「備え」です。</p>
+    </div>
     <div id="contact-list"></div>
     <p class="empty-hint" id="check-empty" hidden>
       まだ誰も登録されていません。<br>「連絡先の管理」タブから、安否を確認したい家族・友人を登録してください。
@@ -227,11 +234,9 @@
       </div>
       <div class="card">
         <h2>171に伝言を残す</h2>
-        <p class="note">通話中でも画面上部を下に引っ張れば番号を確認できるよう、発信前に番号を通知に出しておきます。「1」(録音)を選び、番号を入力→ピーという音の後、ご自身の状況を話してください。</p>
-        <button class="btn btn-main" id="mine-notify-call">番号を通知に出して171にかける</button>
+        <p class="note">171に電話がつながったら、アナウンスに従って「1」(録音)を押し、続けて上のご自身の電話番号を入力してください。ピーという音の後、状況を話せば録音できます。</p>
+        <a class="btn btn-main" href="tel:171" style="text-align:center;display:block;text-decoration:none;">171に電話をかける</a>
         <button class="btn btn-sub" id="mine-copy">自分の番号をコピーする</button>
-        <a class="btn btn-sub" id="mine-auto-record" href="tel:171" style="text-align:center;display:block;text-decoration:none;">自動で171につなぐ(お試し・失敗することがあります)</a>
-        <a class="btn btn-sub" href="tel:171" style="text-align:center;display:block;text-decoration:none;">171に直接かける(手動)</a>
       </div>
     </div>
     <div id="mine-form-wrap">
@@ -291,11 +296,9 @@
   <div class="modal">
     <p class="modal-name" id="modal-name"></p>
     <p class="modal-number" id="modal-number"></p>
-    <button class="btn btn-main" id="modal-notify-call">番号を通知に出して171にかける</button>
+    <p class="note">171に電話がつながったら、アナウンスに従って「2」(再生)を押し、続けて上の番号を入力してください。</p>
+    <a class="btn btn-main" id="modal-manual" href="tel:171" style="text-align:center;display:block;text-decoration:none;">171に電話をかける</a>
     <button class="btn btn-sub" id="modal-copy">番号をコピーする</button>
-    <a class="btn btn-sub" id="modal-auto" href="tel:171" style="text-align:center;display:block;text-decoration:none;">自動で171につなぐ(お試し・失敗することがあります)</a>
-    <a class="btn btn-sub" id="modal-manual" href="tel:171" style="text-align:center;display:block;text-decoration:none;">171に直接かける(手動)</a>
-    <p class="note">通話中に画面の上のほうを下に引っ張ると、通知に出した番号がもう一度確認できます。自動発信がうまくいかない場合は、「2」(再生)を選んで番号を入力してください。</p>
     <button class="btn btn-danger" id="modal-close">閉じる</button>
   </div>
 </div>
@@ -326,28 +329,20 @@ function saveMine(data){ localStorage.setItem('mt_mine', JSON.stringify(data)); 
 
 function sanitizePhone(v){ return (v||'').replace(/[^0-9]/g, ''); }
 
-// カンマは171の音声案内が終わるまでの一時停止(端末により約1〜2秒/個)。
-// 案内のタイミングは機種や回線混雑で前後するため、自動発信はダメ元の補助機能とする。
-function buildTelUri(step, number){
-  const num = sanitizePhone(number);
-  return `tel:171,,${step},,${num}%23,,1`;
+// 次の171体験利用日(毎月1日・15日)を計算する。防災週間等の特例日はカレンダー計算が
+// 複雑になるため、案内文に静的に書くのみでここでは扱わない。
+function nextTestDay(base){
+  const d = new Date(base.getFullYear(), base.getMonth(), base.getDate());
+  for(let i = 0; i < 62; i++){
+    const day = d.getDate();
+    if(day === 1 || day === 15) return d;
+    d.setDate(d.getDate() + 1);
+  }
+  return null;
 }
-
-// 発信前に番号を通知として出しておく。通話中でも画面上部を下に引っ張れば
-// 通知シェードから番号を確認できるため、171の画面と行き来する必要がなくなる。
-async function notifyAndCall(title, number){
-  try {
-    if('Notification' in window){
-      if(Notification.permission === 'default'){
-        await Notification.requestPermission();
-      }
-      if(Notification.permission === 'granted' && navigator.serviceWorker){
-        const reg = await navigator.serviceWorker.ready;
-        reg.showNotification(title, { body: number, tag: 'moshimo-number', requireInteraction: true });
-      }
-    }
-  } catch(e){ /* 通知が使えない環境でも発信自体は続行する */ }
-  window.location.href = 'tel:171';
+function formatJpDate(d){
+  const wd = ['日','月','火','水','木','金','土'][d.getDay()];
+  return `${d.getMonth()+1}月${d.getDate()}日(${wd})`;
 }
 
 function showToast(msg){
@@ -409,7 +404,6 @@ function openModal(c){
   currentModalContact = c;
   $('#modal-name').textContent = c.name;
   $('#modal-number').textContent = c.phone;
-  $('#modal-auto').href = buildTelUri('2', c.phone);
   $('#modal').hidden = false;
 }
 $('#modal-close').addEventListener('click', () => $('#modal').hidden = true);
@@ -417,10 +411,6 @@ $('#modal').addEventListener('click', e => { if(e.target.id === 'modal') $('#mod
 $('#modal-copy').addEventListener('click', () => {
   if(!currentModalContact) return;
   copyText(currentModalContact.phone);
-});
-$('#modal-notify-call').addEventListener('click', () => {
-  if(!currentModalContact) return;
-  notifyAndCall(currentModalContact.name, currentModalContact.phone);
 });
 
 // --- 自分の無事タブ ---
@@ -431,7 +421,6 @@ function renderMine(){
     $('#mine-form-wrap').hidden = true;
     $('#mine-name-view').textContent = mine.name;
     $('#mine-phone-view').textContent = mine.phone;
-    $('#mine-auto-record').href = buildTelUri('1', mine.phone);
   } else {
     $('#mine-registered').hidden = true;
     $('#mine-form-wrap').hidden = false;
@@ -458,11 +447,6 @@ $('#mine-copy').addEventListener('click', () => {
   const mine = loadMine();
   if(!mine) return;
   copyText(mine.phone);
-});
-$('#mine-notify-call').addEventListener('click', () => {
-  const mine = loadMine();
-  if(!mine) return;
-  notifyAndCall(mine.name, mine.phone);
 });
 
 // --- 連絡先管理タブ ---
@@ -610,6 +594,7 @@ renderContactList();
 renderMine();
 renderManageList();
 renderPrintList();
+$('#next-test-day').textContent = formatJpDate(nextTestDay(new Date()));
 
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js').catch(() => {});
