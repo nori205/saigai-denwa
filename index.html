@@ -227,9 +227,10 @@
       </div>
       <div class="card">
         <h2>171に伝言を残す</h2>
-        <p class="note">171へ発信し、自動で「録音」を選択→あなたの番号を入力するところまで進めます。ピーという音の後、ご自身の状況を話してください。</p>
-        <a class="btn btn-main" id="mine-auto-record" href="tel:171" style="text-align:center;display:block;text-decoration:none;">自動で171につなぐ(伝言を残す)</a>
+        <p class="note">通話中でも画面上部を下に引っ張れば番号を確認できるよう、発信前に番号を通知に出しておきます。「1」(録音)を選び、番号を入力→ピーという音の後、ご自身の状況を話してください。</p>
+        <button class="btn btn-main" id="mine-notify-call">番号を通知に出して171にかける</button>
         <button class="btn btn-sub" id="mine-copy">自分の番号をコピーする</button>
+        <a class="btn btn-sub" id="mine-auto-record" href="tel:171" style="text-align:center;display:block;text-decoration:none;">自動で171につなぐ(お試し・失敗することがあります)</a>
         <a class="btn btn-sub" href="tel:171" style="text-align:center;display:block;text-decoration:none;">171に直接かける(手動)</a>
       </div>
     </div>
@@ -290,10 +291,11 @@
   <div class="modal">
     <p class="modal-name" id="modal-name"></p>
     <p class="modal-number" id="modal-number"></p>
-    <a class="btn btn-main" id="modal-auto" href="tel:171" style="text-align:center;display:block;text-decoration:none;">自動で171につなぐ(伝言を聞く)</a>
+    <button class="btn btn-main" id="modal-notify-call">番号を通知に出して171にかける</button>
     <button class="btn btn-sub" id="modal-copy">番号をコピーする</button>
+    <a class="btn btn-sub" id="modal-auto" href="tel:171" style="text-align:center;display:block;text-decoration:none;">自動で171につなぐ(お試し・失敗することがあります)</a>
     <a class="btn btn-sub" id="modal-manual" href="tel:171" style="text-align:center;display:block;text-decoration:none;">171に直接かける(手動)</a>
-    <p class="note">自動発信がうまくいかない場合は、番号をコピーして171の案内に従って自分で入力してください。</p>
+    <p class="note">通話中に画面の上のほうを下に引っ張ると、通知に出した番号がもう一度確認できます。自動発信がうまくいかない場合は、「2」(再生)を選んで番号を入力してください。</p>
     <button class="btn btn-danger" id="modal-close">閉じる</button>
   </div>
 </div>
@@ -329,6 +331,23 @@ function sanitizePhone(v){ return (v||'').replace(/[^0-9]/g, ''); }
 function buildTelUri(step, number){
   const num = sanitizePhone(number);
   return `tel:171,,${step},,${num}%23,,1`;
+}
+
+// 発信前に番号を通知として出しておく。通話中でも画面上部を下に引っ張れば
+// 通知シェードから番号を確認できるため、171の画面と行き来する必要がなくなる。
+async function notifyAndCall(title, number){
+  try {
+    if('Notification' in window){
+      if(Notification.permission === 'default'){
+        await Notification.requestPermission();
+      }
+      if(Notification.permission === 'granted' && navigator.serviceWorker){
+        const reg = await navigator.serviceWorker.ready;
+        reg.showNotification(title, { body: number, tag: 'moshimo-number', requireInteraction: true });
+      }
+    }
+  } catch(e){ /* 通知が使えない環境でも発信自体は続行する */ }
+  window.location.href = 'tel:171';
 }
 
 function showToast(msg){
@@ -399,6 +418,10 @@ $('#modal-copy').addEventListener('click', () => {
   if(!currentModalContact) return;
   copyText(currentModalContact.phone);
 });
+$('#modal-notify-call').addEventListener('click', () => {
+  if(!currentModalContact) return;
+  notifyAndCall(currentModalContact.name, currentModalContact.phone);
+});
 
 // --- 自分の無事タブ ---
 function renderMine(){
@@ -435,6 +458,11 @@ $('#mine-copy').addEventListener('click', () => {
   const mine = loadMine();
   if(!mine) return;
   copyText(mine.phone);
+});
+$('#mine-notify-call').addEventListener('click', () => {
+  const mine = loadMine();
+  if(!mine) return;
+  notifyAndCall(mine.name, mine.phone);
 });
 
 // --- 連絡先管理タブ ---
